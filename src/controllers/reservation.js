@@ -102,7 +102,7 @@ module.exports = {
         await Reservation.updateOne({ _id: reservation._id }, { status: "not booked" });
         console.log("Reservation not completed for:", reservation._id);
       }
-    }, 0.5 * 60 * 1000);
+    }, 3 * 60 * 1000);
     
     // Create a reservation
     // const paymentStatus = await Payment.findOne({userId});

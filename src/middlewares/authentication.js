@@ -1,7 +1,5 @@
 "use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | MidnightCoders FullStack Team
-------------------------------------------------------- */
+
 
 const Token = require("../models/token");
 const jwt = require("jsonwebtoken");

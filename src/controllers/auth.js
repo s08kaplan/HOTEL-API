@@ -110,7 +110,7 @@ module.exports = {
        }
 
        if(refreshToken) {
-        const refreshData = await jwt.verify(refreshToken, process.env.REFRESH_KEY)
+        const refreshData =  jwt.verify(refreshToken, process.env.REFRESH_KEY)
          
         if(!refreshData){
             res.errorStatusCode = 401

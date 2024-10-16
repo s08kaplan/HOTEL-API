@@ -1,15 +1,5 @@
 "use strict";
-/* -------------------------------------------------------
-    NODEJS EXPRESS | MIDNIGHT CODERS HOTEL API
-------------------------------------------------------- */
-/*
-    $ cp .env-sample .env
-    $ npm init -y
-    $ npm i express dotenv mongoose express-async-errors
-    $ npm i morgan swagger-autogen swagger-ui-express redoc-express
-    $ mkdir logs
-    $ nodemon
-*/
+
 const express = require("express");
 const app = express();
 
@@ -25,7 +15,7 @@ const HOST = process.env?.HOST || "127.0.0.1";
 require("express-async-errors");
 
 /* ------------------------------------------------------- */
-// Configrations:
+// Configurations:
 
 // Connect to DB:
 const { dbConnection } = require("./src/configs/dbConnection");
@@ -48,7 +38,7 @@ app.use(require("./src/middlewares/queryHandler"));
 
 // Logger:
 
-// Auhentication:
+// Authentication:
 app.use(require("./src/middlewares/authentication"));
 
 
