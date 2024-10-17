@@ -32,20 +32,20 @@ module.exports = {
   },
 
   create: async (req, res) => {
-
-    let { username, guest_number, departure_date, arrival_date, roomNumber } = req.body;
+    let { username, guest_number, departure_date, arrival_date, roomNumber } =
+      req.body;
 
     const arrival = new Date(arrival_date).getTime();
     const departure = new Date(departure_date).getTime();
     const currentDate = Date.now();
     const notPassed = currentDate > arrival || currentDate > departure;
     const invalidDate = arrival > departure;
-    
+
     if (notPassed || invalidDate) {
       res.errorStatusCode = 400;
       throw new Error("Please enter valid dates");
     }
-    
+
     // Find the user making the reservation
     const user = await User.findOne({ username });
     if (!user) {
@@ -53,89 +53,119 @@ module.exports = {
       throw new Error("User not found");
     }
     const userId = user._id;
-    const roomInfo = await Room.findOne({ roomNumber })
-    console.log("roomInfo: ",roomInfo);
- 
-    
+    const roomInfo = await Room.findOne({ roomNumber });
+    console.log("roomInfo: ", roomInfo);
+
     // Check if the user has already booked this room for overlapping dates
     const existingUserReservation = await Reservation.findOne({
       userId: userId,
       roomId: roomInfo._id,
       $or: [
-        { arrival_date: { $lte: req.body.departure_date }, departure_date: { $gte: req.body.arrival_date } }
-      ]
+        {
+          arrival_date: { $lte: req.body.departure_date },
+          departure_date: { $gte: req.body.arrival_date },
+        },
+      ],
     });
-    
+
     if (existingUserReservation) {
-      throw new Error("You have already reserved this room for the requested period");
+      throw new Error(
+        "You have already reserved this room for the requested period"
+      );
     }
-    
+
     // Check if another user has already booked this room for overlapping dates
     const existingReservation = await Reservation.findOne({
       roomId: roomInfo._id,
       $or: [
-        { arrival_date: { $lte: req.body.departure_date }, departure_date: { $gte: req.body.arrival_date } }
-      ]
+        {
+          arrival_date: { $lte: req.body.departure_date },
+          departure_date: { $gte: req.body.arrival_date },
+        },
+      ],
     });
-    
+
     if (existingReservation) {
       throw new Error("This room is already reserved for the requested period");
     }
-    
+
     // If the room is available, proceed with reservation
     req.body.userId = userId;
     req.body.roomId = roomInfo._id;
     req.body.night = nightCalc(arrival_date, departure_date);
     req.body.totalPrice = req.body.night * req.body.price;
     req.body.status = "waiting";
-    const reservation = await Reservation.create(req.body);
+    let reservation = await Reservation.create(req.body);
 
     setTimeout(async () => {
       const payment = await Payment.findOne({ userId: user._id });
-  
+
+      // if (payment && payment.status) {
+      //   // Payment successful
+      //   reservation = await Reservation.updateOne(
+      //     { _id: reservation._id },
+      //     { status: "payment successful" }
+      //   );
+      //   console.log("Payment successful for reservation:", reservation._id);
+      // } else {
+      //   // Revert status to "not booked"
+      //   reservation = await Reservation.updateOne(
+      //     { _id: reservation._id },
+      //     { status: "not booked" }
+      //   );
+      //   console.log("Reservation not completed for:", reservation._id);
+      // }
       if (payment && payment.status) {
-        // Payment successful
-        await Reservation.updateOne({ _id: reservation._id }, { status: "payment successful" });
+        // Payment successful, update reservation status to 'payment successful'
+        reservation = await Reservation.findByIdAndUpdate(
+            reservation._id,
+            { status: "payment successful" },
+            { new: true } // Returns the updated reservation document
+        );
         console.log("Payment successful for reservation:", reservation._id);
-      } else {
-        // Revert status to "not booked"
-        await Reservation.updateOne({ _id: reservation._id }, { status: "not booked" });
+    } else {
+        // Revert status to "not booked" in case of payment failure
+        reservation = await Reservation.findByIdAndUpdate(
+            reservation._id,
+            { status: "not booked" },
+            { new: true }
+        );
         console.log("Reservation not completed for:", reservation._id);
-      }
+    }
     }, 3 * 60 * 1000);
-    
+
     // Create a reservation
     // const paymentStatus = await Payment.findOne({userId});
 
     // const data = await Reservation.create(req.body);
-    
+
     res.status(201).send({
       error: false,
       data: reservation,
     });
-    
   },
 
   read: async (req, res) => {
-  const userId = req.user.id
-  const filter = req.query.filter || {};
-     let customFilter = {};
+    const userId = req.user.id;
+    const filter = req.query.filter || {};
+    let customFilter = {};
 
-  if(filter.roomId) {
-    customFilter.roomId = filter.roomId
-  }
-  
-  if(filter.reservationId) {
-  customFilter._id = filter.reservationId
-  }
-  
-  if(filter.userId) {
-   customFilter.userId = filter.userId
-  }
- 
-  
+    if (filter.roomId) {
+      customFilter.roomId = filter.roomId;
+    }
 
-    const data = await res.getModelList(Reservation,customFilter,["userId", "roomId"])
+    if (filter.reservationId) {
+      customFilter._id = filter.reservationId;
+    }
+
+    if (filter.userId) {
+      customFilter.userId = filter.userId;
+    }
+
+    const data = await res.getModelList(Reservation, customFilter, [
+      "userId",
+      "roomId",
+    ]);
 
     res.status(200).send({
       error: false,
