@@ -118,11 +118,31 @@ module.exports = {
   unReadPost: async (req, res) => {
     const { messageIds } = req.body;
     // console.log(messageIds);
-    await Message.updateMany(
-      { _id: { $in: messageIds } },
-      { $set: { isRead: true } }
-    );
-    const data = await Message.countDocuments({ isRead: false });
+    const statusMessages = await Message.find({ _id: { $in: messageIds } });
+    // console.log("1: ",statusMessages);
+    const isReadStatus = statusMessages.map((msg) => {
+      return {
+        ...msg.toObject(), // Convert Mongoose document to plain JS object
+        isRead: !msg.isRead, // Toggle the `isRead` value
+      };
+    });
+
+    const bulkOperations = isReadStatus.map((msg) => {
+      return {
+        updateOne: {
+          filter: { _id: msg._id },
+          update: { $set: { isRead: msg.isRead } },
+        },
+      };
+    });
+
+    // Execute bulk update operation
+   const data = await Message.bulkWrite(bulkOperations); //bulkWrite update multiple documents in a single operation, and it avoids the overhead of making multiple individual update queries.
+    // await Message.updateMany(
+    //   { _id: { $in: messageIds } },
+    //   { $set: { isRead: true } }
+    // );
+    // const data = await Message.countDocuments({ isRead: false });
     res.status(200).send({
       error: false,
       data,
